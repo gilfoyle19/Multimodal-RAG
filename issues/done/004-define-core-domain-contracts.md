@@ -8,11 +8,11 @@ Define the first backend Pydantic contracts for documents, pages, source element
 
 ## Acceptance criteria
 
-- [ ] Contracts cover the core vocabulary in `CONTEXT.md` without embedding implementation plans there.
-- [ ] Answer status is constrained to `grounded`, `partial`, and `not_found`.
-- [ ] Source elements and evidence contracts include deterministic citation identity fields.
-- [ ] Unit tests cover valid payloads and schema validation failures.
-- [ ] Business-rule validation has an explicit home for later slices.
+- [x] Contracts cover the core vocabulary in `CONTEXT.md` without embedding implementation plans there.
+- [x] Answer status is constrained to `grounded`, `partial`, and `not_found`.
+- [x] Source elements and evidence contracts include deterministic citation identity fields.
+- [x] Unit tests cover valid payloads and schema validation failures.
+- [x] Business-rule validation has an explicit home for later slices.
 
 ## Blocked by
 
