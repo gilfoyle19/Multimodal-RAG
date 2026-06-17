@@ -13,9 +13,9 @@ Agents should make small, focused changes tied to a single issue or explicit use
 - Vector store: ChromaDB persistent local store, intended.
 - Hosted AI provider: OpenAI, intended for embeddings, figure captions, query decomposition, evidence verification, and structured answer generation.
 - Local reranker: small BGE-style reranker, intended.
-- Package manager: not selected yet. Do not introduce one without an issue or explicit user request.
-- Test runner: not configured yet. Prefer `pytest` once Python code exists.
-- Lint/format/typecheck: not configured yet.
+- Package manager: uv.
+- Test runner: pytest.
+- Lint/format/typecheck: ruff and mypy.
 - Runtime scripts: `ralph/once.ps1` and `ralph/afk.ps1`.
 
 ## Repository Map
@@ -57,15 +57,12 @@ Before editing code or docs, read:
 Current repo commands:
 
 ```powershell
+uv sync
+uv run pytest
+uv run ruff check .
+uv run mypy .
 powershell -ExecutionPolicy Bypass -File ralph/once.ps1
 powershell -ExecutionPolicy Bypass -File ralph/afk.ps1 -Iterations 5
-```
-
-Until project dependency files exist, there is no canonical test, lint, typecheck, build, or dev-server command. If Python code exists but no test command is configured, use the safest available fallback:
-
-```powershell
-python -m compileall .
-python -m unittest
 ```
 
 If a command cannot run because the project is not scaffolded yet or dependencies are missing, state that clearly.

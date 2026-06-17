@@ -1,0 +1,42 @@
+[project]
+name = "multimodal-rag"
+version = "0.1.0"
+description = "Multimodal technical-manual troubleshooting RAG prototype."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "chromadb>=0.6.0",
+    "fastapi>=0.115.0",
+    "openai>=1.59.0",
+    "pdfplumber>=0.11.5",
+    "pydantic>=2.10.0",
+    "pydantic-settings>=2.7.0",
+    "pymupdf>=1.25.0",
+    "python-multipart>=0.0.20",
+    "sentence-transformers>=3.3.0",
+    "uvicorn[standard]>=0.34.0",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.0",
+    "mypy>=1.14.0",
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.25.0",
+    "ruff>=0.8.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["pytest-cache-files-*"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["src", "tests"]
+exclude = ["pytest-cache-files-*"]
