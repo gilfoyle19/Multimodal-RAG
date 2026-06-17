@@ -1,0 +1,4 @@
+interface:
+  display_name: "Generate AGENTS.md"
+  short_description: "Create repo-specific agent instructions"
+  default_prompt: "Use $generate-agents-md to draft an AGENTS.md for this repository."
