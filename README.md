@@ -6,7 +6,7 @@ Prototype for grounded troubleshooting answers from locally loaded technical man
 
 ```mermaid
 flowchart TD
-    PDFs[Local PDFs in database/] --> Ingest[POST /ingest]
+    PDFs["Local PDFs in database/"] --> Ingest["POST /ingest"]
     Sidecars[Optional metadata sidecars] --> Ingest
     Ingest --> Extract[Extract text, tables, figures, previews]
     Extract --> SQLite[(SQLite metadata + FTS5)]
@@ -18,7 +18,7 @@ flowchart TD
     SQLite --> Embed[OpenAI embeddings]
     Embed --> Chroma[(ChromaDB vectors)]
 
-    User[Technician question] --> Ask[POST /ask]
+    User[Technician question] --> Ask["POST /ask"]
     Ask --> Decompose[Contract-validated query decomposition]
     Decompose --> FTS
     Decompose --> Chroma
@@ -30,11 +30,11 @@ flowchart TD
     Decision -->|None| NotFound[Deterministic not_found response]
     Decision -->|Some / all| Generate[Structured answer generation]
     Generate --> Answer[Grounded or partial answer with citations]
-    SQLite --> Sources[GET /sources/{source_id}]
+    SQLite --> Sources["GET /sources/{source_id}"]
     Artifacts --> Sources
     Answer --> Sources
     Ask --> Trace[(Ask trace)]
-    Trace --> Evaluate[POST /evaluate]
+    Trace --> Evaluate["POST /evaluate"]
     Answer --> Evaluate
 ```
 
