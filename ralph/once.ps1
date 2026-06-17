@@ -42,4 +42,5 @@ $localIssues
 $prompt
 "@
 
-codex exec --sandbox workspace-write $fullPrompt
+$fullPrompt | codex exec --sandbox workspace-write -
+exit $LASTEXITCODE
