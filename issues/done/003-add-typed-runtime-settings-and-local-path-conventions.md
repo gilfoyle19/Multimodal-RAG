@@ -8,11 +8,11 @@ Add typed runtime settings for local paths, model/provider configuration, retrie
 
 ## Acceptance criteria
 
-- [ ] Backend settings are typed and validated at startup or import time.
-- [ ] Defaults point to local `database/` and `data/` paths.
-- [ ] OpenAI model and cache-related settings are represented but do not require live credentials in tests.
-- [ ] Tests cover valid defaults and invalid configuration.
-- [ ] Local artifact and secret paths remain ignored by git.
+- [x] Backend settings are typed and validated at startup or import time.
+- [x] Defaults point to local `database/` and `data/` paths.
+- [x] OpenAI model and cache-related settings are represented but do not require live credentials in tests.
+- [x] Tests cover valid defaults and invalid configuration.
+- [x] Local artifact and secret paths remain ignored by git.
 
 ## Blocked by
 
