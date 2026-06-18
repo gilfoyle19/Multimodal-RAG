@@ -33,10 +33,10 @@ pythonpath = ["src"]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
-extend-exclude = ["pytest-cache-files-*"]
+extend-exclude = ["database", "data", "pytest-cache-files-*", "pytest-of-*"]
 
 [tool.mypy]
 python_version = "3.11"
 strict = true
 files = ["src", "tests"]
-exclude = ["pytest-cache-files-*"]
+exclude = ["database", "data", "frontend", "pytest-cache-files-*", "pytest-of-*"]
