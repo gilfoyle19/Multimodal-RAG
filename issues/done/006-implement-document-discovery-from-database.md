@@ -8,11 +8,11 @@ Implement discovery of local digital PDFs placed in `database/`, including optio
 
 ## Acceptance criteria
 
-- [ ] Discovery finds PDF documents under the configured database path.
-- [ ] Matching metadata sidecars are parsed when present.
-- [ ] Missing sidecars are allowed.
-- [ ] Discovery records document candidates without indexing partial content.
-- [ ] Tests cover PDFs with and without sidecars.
+- [x] Discovery finds PDF documents under the configured database path.
+- [x] Matching metadata sidecars are parsed when present.
+- [x] Missing sidecars are allowed.
+- [x] Discovery records document candidates without indexing partial content.
+- [x] Tests cover PDFs with and without sidecars.
 
 ## Blocked by
 
