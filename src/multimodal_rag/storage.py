@@ -17,7 +17,9 @@ CREATE TABLE IF NOT EXISTS documents (
     source_path TEXT NOT NULL,
     content_hash TEXT NOT NULL,
     provenance_json TEXT NOT NULL DEFAULT '{}' CHECK (json_valid(provenance_json)),
-    ingestion_status TEXT NOT NULL DEFAULT 'discovered',
+    ingestion_status TEXT NOT NULL DEFAULT 'discovered' CHECK (
+        ingestion_status IN ('discovered', 'indexing', 'indexed', 'skipped', 'failed')
+    ),
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

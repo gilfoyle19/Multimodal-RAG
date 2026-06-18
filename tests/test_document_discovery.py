@@ -7,6 +7,12 @@ from pathlib import Path
 import pytest
 
 from multimodal_rag.discovery import discover_document_candidates
+from multimodal_rag.ingestion_status import (
+    list_queryable_document_ids,
+    mark_document_ingestion_failed,
+    mark_document_ingestion_indexed,
+    mark_document_ingestion_indexing,
+)
 from multimodal_rag.storage import connect_sqlite, initialize_sqlite_database
 
 
@@ -108,3 +114,104 @@ def test_discovery_finds_pdfs_under_configured_database_path(local_runtime_path:
         str(second_pdf_path),
     }
     assert persisted_count == 2
+
+
+def test_discovery_skips_unchanged_indexed_pdf(local_runtime_path: Path) -> None:
+    database_path = local_runtime_path / "database"
+    database_path.mkdir()
+    pdf_path = database_path / "pump.pdf"
+    pdf_path.write_bytes(b"%PDF-1.7\n% pump\n")
+
+    sqlite_path = local_runtime_path / "data" / "app.sqlite3"
+    initialize_sqlite_database(sqlite_path)
+
+    with connect_sqlite(sqlite_path) as connection:
+        discovered = discover_document_candidates(database_path, connection)
+        document_id = discovered[0].document_id
+        mark_document_ingestion_indexed(connection, document_id)
+
+        rediscovered = discover_document_candidates(database_path, connection)
+        row = connection.execute(
+            "SELECT ingestion_status FROM documents WHERE document_id = ?",
+            (document_id,),
+        ).fetchone()
+
+    assert rediscovered[0].ingestion_status == "skipped"
+    assert row["ingestion_status"] == "skipped"
+
+
+def test_discovery_marks_changed_pdf_for_clean_reindexing(local_runtime_path: Path) -> None:
+    database_path = local_runtime_path / "database"
+    database_path.mkdir()
+    pdf_path = database_path / "pump.pdf"
+    pdf_path.write_bytes(b"%PDF-1.7\n% first revision\n")
+
+    sqlite_path = local_runtime_path / "data" / "app.sqlite3"
+    initialize_sqlite_database(sqlite_path)
+
+    with connect_sqlite(sqlite_path) as connection:
+        discovered = discover_document_candidates(database_path, connection)
+        document_id = discovered[0].document_id
+        mark_document_ingestion_indexed(connection, document_id)
+        connection.execute(
+            """
+            INSERT INTO pages (page_id, document_id, page_number)
+            VALUES (?, ?, ?)
+            """,
+            ("page_pump_0001", document_id, 1),
+        )
+        connection.commit()
+
+        pdf_path.write_bytes(b"%PDF-1.7\n% second revision\n")
+        rediscovered = discover_document_candidates(database_path, connection)
+        row = connection.execute(
+            "SELECT content_hash, ingestion_status FROM documents WHERE document_id = ?",
+            (document_id,),
+        ).fetchone()
+        page_count = connection.execute(
+            "SELECT COUNT(*) FROM pages WHERE document_id = ?",
+            (document_id,),
+        ).fetchone()[0]
+
+    assert rediscovered[0].ingestion_status == "discovered"
+    assert row["content_hash"] == rediscovered[0].content_hash
+    assert row["ingestion_status"] == "discovered"
+    assert page_count == 0
+
+
+def test_ingestion_status_helpers_record_visible_states(local_runtime_path: Path) -> None:
+    database_path = local_runtime_path / "database"
+    database_path.mkdir()
+    pdf_path = database_path / "pump.pdf"
+    pdf_path.write_bytes(b"%PDF-1.7\n% pump\n")
+
+    sqlite_path = local_runtime_path / "data" / "app.sqlite3"
+    initialize_sqlite_database(sqlite_path)
+
+    with connect_sqlite(sqlite_path) as connection:
+        discovered = discover_document_candidates(database_path, connection)
+        document_id = discovered[0].document_id
+
+        mark_document_ingestion_indexing(connection, document_id)
+        indexing_status = connection.execute(
+            "SELECT ingestion_status FROM documents WHERE document_id = ?",
+            (document_id,),
+        ).fetchone()["ingestion_status"]
+
+        mark_document_ingestion_failed(connection, document_id)
+        failed_status = connection.execute(
+            "SELECT ingestion_status FROM documents WHERE document_id = ?",
+            (document_id,),
+        ).fetchone()["ingestion_status"]
+
+        mark_document_ingestion_indexed(connection, document_id)
+        indexed_status = connection.execute(
+            "SELECT ingestion_status FROM documents WHERE document_id = ?",
+            (document_id,),
+        ).fetchone()["ingestion_status"]
+        queryable_ids = list_queryable_document_ids(connection)
+
+    assert indexing_status == "indexing"
+    assert failed_status == "failed"
+    assert indexed_status == "indexed"
+    assert queryable_ids == [document_id]

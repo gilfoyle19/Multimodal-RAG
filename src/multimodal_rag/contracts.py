@@ -15,6 +15,14 @@ class AnswerStatus(StrEnum):
     NOT_FOUND = "not_found"
 
 
+class DocumentIngestionStatus(StrEnum):
+    DISCOVERED = "discovered"
+    INDEXING = "indexing"
+    INDEXED = "indexed"
+    SKIPPED = "skipped"
+    FAILED = "failed"
+
+
 class SourceElementType(StrEnum):
     TEXT = "text"
     TABLE = "table"
@@ -57,6 +65,7 @@ class Document(ContractModel):
     title: str = Field(min_length=1)
     source_path: str = Field(min_length=1)
     content_hash: str = Field(min_length=1)
+    ingestion_status: DocumentIngestionStatus = DocumentIngestionStatus.DISCOVERED
     provenance: dict[str, str] = Field(default_factory=dict)
 
 

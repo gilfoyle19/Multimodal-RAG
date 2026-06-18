@@ -8,11 +8,11 @@ Track document hashes and ingestion status so unchanged PDFs are skipped, change
 
 ## Acceptance criteria
 
-- [ ] Document records include content hash and ingestion status.
-- [ ] Unchanged PDFs can be detected and skipped.
-- [ ] Changed PDFs are marked for clean re-indexing.
-- [ ] Failed or incomplete ingestion states are visible through stored status.
-- [ ] Tests cover unchanged, changed, failed, and indexed status paths.
+- [x] Document records include content hash and ingestion status.
+- [x] Unchanged PDFs can be detected and skipped.
+- [x] Changed PDFs are marked for clean re-indexing.
+- [x] Failed or incomplete ingestion states are visible through stored status.
+- [x] Tests cover unchanged, changed, failed, and indexed status paths.
 
 ## Blocked by
 
