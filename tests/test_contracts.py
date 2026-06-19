@@ -63,6 +63,7 @@ def test_core_contracts_accept_valid_payloads() -> None:
         candidate_id="cand_manual_a_warning_0001",
         chunk_id=chunk.chunk_id,
         source_element_id=source.source_element_id,
+        chunk_kind=chunk.chunk_kind,
         citation=citation,
         excerpt=source.content,
         retrieval_scores=RetrievalScores(vector=0.9, keyword=0.5, rrf=0.75, rerank=0.8),
@@ -106,6 +107,31 @@ def test_core_contracts_accept_valid_payloads() -> None:
     assert source.citation.citation_key == "doc_manual_a:p1:warning:0001"
     assert candidate.citation.source_element_id == source.source_element_id
     assert verified.supported_subquestion_ids == ["sq_safety"]
+
+
+def test_evidence_candidates_identify_table_row_helper_results() -> None:
+    citation = CitationIdentity(
+        document_id="doc_faults",
+        page_id="doc_faults:page:0001",
+        source_element_id="doc_faults:source:table:0001:0001",
+        page_number=1,
+        citation_key="doc_faults:p1:table:0001",
+    )
+    candidate = EvidenceCandidate(
+        candidate_id="cand_faults_e12",
+        chunk_id="doc_faults:chunk:table-row:0001:0001:0002",
+        source_element_id=citation.source_element_id,
+        chunk_kind=ChunkKind.TABLE_ROW_HELPER,
+        parent_source_element_id=citation.source_element_id,
+        citation=citation,
+        excerpt="Code: E12 | Action: Check coolant",
+        retrieval_scores=RetrievalScores(keyword=0.8),
+        relevance_reason="Matched the E12 row helper.",
+    )
+
+    assert candidate.chunk_kind is ChunkKind.TABLE_ROW_HELPER
+    assert candidate.source_element_id == citation.source_element_id
+    assert candidate.parent_source_element_id == citation.source_element_id
 
 
 def test_answer_status_is_constrained_to_strict_status_values() -> None:

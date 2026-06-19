@@ -8,11 +8,11 @@ Create internal row-level table helper chunks to improve retrieval of fault-code
 
 ## Acceptance criteria
 
-- [ ] Row helper chunks link back to their parent table source element.
-- [ ] Row helpers are searchable but not exposed as primary citations.
-- [ ] Chunk metadata distinguishes helper chunks from source elements.
-- [ ] Tests verify row helper creation and parent table mapping.
-- [ ] Retrieval-facing contracts can identify helper-derived candidates.
+- [x] Row helper chunks link back to their parent table source element.
+- [x] Row helpers are searchable but not exposed as primary citations.
+- [x] Chunk metadata distinguishes helper chunks from source elements.
+- [x] Tests verify row helper creation and parent table mapping.
+- [x] Retrieval-facing contracts can identify helper-derived candidates.
 
 ## Blocked by
 

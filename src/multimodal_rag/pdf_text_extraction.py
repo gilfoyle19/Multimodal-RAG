@@ -216,8 +216,95 @@ def _extract_page_table_source_elements(
                 metadata_json,
             ),
         )
+        _insert_table_row_helper_chunks(
+            connection=connection,
+            document_id=document_id,
+            page_number=page_number,
+            table_index=table_index,
+            table=table,
+            parent_source_element_id=source_element_id,
+            parent_citation_key=citation_key,
+            parent_metadata=metadata,
+        )
         table_source_elements_created += 1
     return table_source_elements_created
+
+
+def _insert_table_row_helper_chunks(
+    connection: sqlite3.Connection,
+    document_id: str,
+    page_number: int,
+    table_index: int,
+    table: list[list[str | None]],
+    parent_source_element_id: str,
+    parent_citation_key: str,
+    parent_metadata: dict[str, str],
+) -> None:
+    header, data_rows = _split_table_header_and_rows(table)
+    for row_index, row in data_rows:
+        searchable_text = _format_table_row_helper_text(header, row)
+        if not searchable_text:
+            continue
+
+        metadata = {
+            **parent_metadata,
+            "chunk_role": "retrieval_helper",
+            "citation_key": parent_citation_key,
+            "citation_source_element_id": parent_source_element_id,
+            "helper_kind": "table_row",
+            "is_primary_citation": "false",
+            "row_index": str(row_index),
+        }
+        connection.execute(
+            """
+            INSERT INTO chunks (
+                chunk_id, source_element_id, chunk_kind, searchable_text,
+                parent_source_element_id, metadata_json
+            )
+            VALUES (?, ?, ?, ?, ?, ?)
+            ON CONFLICT(chunk_id) DO UPDATE SET
+                searchable_text = excluded.searchable_text,
+                parent_source_element_id = excluded.parent_source_element_id,
+                metadata_json = excluded.metadata_json
+            """,
+            (
+                _table_row_helper_chunk_id(document_id, page_number, table_index, row_index),
+                parent_source_element_id,
+                "table_row_helper",
+                searchable_text,
+                parent_source_element_id,
+                json.dumps(metadata, sort_keys=True),
+            ),
+        )
+
+
+def _split_table_header_and_rows(
+    table: list[list[str | None]],
+) -> tuple[list[str], list[tuple[int, list[str]]]]:
+    normalized_rows = [
+        (row_index, [_normalize_table_cell(cell) for cell in row])
+        for row_index, row in enumerate(table, start=1)
+        if any(_normalize_table_cell(cell) for cell in row)
+    ]
+    if len(normalized_rows) <= 1:
+        return [], []
+
+    header = normalized_rows[0][1]
+    return header, normalized_rows[1:]
+
+
+def _format_table_row_helper_text(header: list[str], row: list[str]) -> str:
+    cells = []
+    for column_index, value in enumerate(row):
+        if not value:
+            continue
+
+        column_label = header[column_index] if column_index < len(header) else ""
+        if column_label:
+            cells.append(f"{column_label}: {value}")
+        else:
+            cells.append(value)
+    return " | ".join(cells).strip()
 
 
 def _format_table_content(table: list[list[str | None]]) -> str:
@@ -257,6 +344,15 @@ def _table_source_element_id(document_id: str, page_number: int, table_index: in
 
 def _table_chunk_id(document_id: str, page_number: int, table_index: int) -> str:
     return f"{document_id}:chunk:table:{page_number:04d}:{table_index:04d}"
+
+
+def _table_row_helper_chunk_id(
+    document_id: str,
+    page_number: int,
+    table_index: int,
+    row_index: int,
+) -> str:
+    return f"{document_id}:chunk:table-row:{page_number:04d}:{table_index:04d}:{row_index:04d}"
 
 
 def _table_citation_key(document_id: str, page_number: int, table_index: int) -> str:

@@ -128,6 +128,8 @@ class EvidenceCandidate(ContractModel):
     candidate_id: str = Field(min_length=1)
     chunk_id: str = Field(min_length=1)
     source_element_id: str = Field(min_length=1)
+    chunk_kind: ChunkKind = ChunkKind.SOURCE_ELEMENT
+    parent_source_element_id: str | None = Field(default=None, min_length=1)
     citation: CitationIdentity
     excerpt: str = Field(min_length=1)
     retrieval_scores: RetrievalScores

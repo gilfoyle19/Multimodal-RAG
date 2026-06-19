@@ -202,6 +202,76 @@ def test_extract_pdf_text_persists_whole_table_source_elements(
     }
 
 
+def test_extract_pdf_text_persists_row_helper_chunks_for_table_rows(
+    local_runtime_path: Path,
+) -> None:
+    pdf_path = local_runtime_path / "database" / "faults.pdf"
+    pdf_path.parent.mkdir()
+    _create_pdf_with_table(pdf_path)
+    sqlite_path = local_runtime_path / "data" / "app.sqlite3"
+    initialize_sqlite_database(sqlite_path)
+
+    with connect_sqlite(sqlite_path) as connection:
+        connection.execute(
+            """
+            INSERT INTO documents (
+                document_id, title, source_path, content_hash, ingestion_status
+            )
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            ("doc_faults", "Fault Manual", str(pdf_path), "sha256:faults", "discovered"),
+        )
+        connection.commit()
+
+        extract_pdf_text_source_elements(connection, "doc_faults")
+        table_source = connection.execute(
+            """
+            SELECT source_element_id, citation_key
+            FROM source_elements
+            WHERE source_type = 'table'
+            """
+        ).fetchone()
+        row_helpers = connection.execute(
+            """
+            SELECT chunk_id, source_element_id, chunk_kind, searchable_text,
+                   parent_source_element_id, metadata_json
+            FROM chunks
+            WHERE chunk_kind = 'table_row_helper'
+            ORDER BY chunk_id
+            """
+        ).fetchall()
+        row_helper_source_count = connection.execute(
+            "SELECT COUNT(*) FROM source_elements WHERE source_type = 'table_row_helper'"
+        ).fetchone()[0]
+
+    assert row_helper_source_count == 0
+    assert [row["chunk_id"] for row in row_helpers] == [
+        "doc_faults:chunk:table-row:0001:0001:0002",
+        "doc_faults:chunk:table-row:0001:0001:0003",
+    ]
+    assert [row["source_element_id"] for row in row_helpers] == [
+        table_source["source_element_id"],
+        table_source["source_element_id"],
+    ]
+    assert [row["parent_source_element_id"] for row in row_helpers] == [
+        table_source["source_element_id"],
+        table_source["source_element_id"],
+    ]
+    assert row_helpers[0]["searchable_text"] == "Code: E12 | Action: Check coolant"
+    assert row_helpers[1]["searchable_text"] == "Code: E13 | Action: Reset drive"
+    assert json.loads(row_helpers[0]["metadata_json"]) == {
+        "chunk_role": "retrieval_helper",
+        "citation_source_element_id": table_source["source_element_id"],
+        "citation_key": table_source["citation_key"],
+        "column_count": "2",
+        "extraction_method": "pdfplumber_table",
+        "helper_kind": "table_row",
+        "is_primary_citation": "false",
+        "row_count": "3",
+        "row_index": "2",
+    }
+
+
 def test_extract_pdf_text_marks_document_failed_when_pdf_cannot_be_opened(
     local_runtime_path: Path,
 ) -> None:
