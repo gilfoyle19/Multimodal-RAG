@@ -8,11 +8,11 @@ Build persistent ChromaDB vector indexing for searchable chunks while preserving
 
 ## Acceptance criteria
 
-- [ ] Vector records use stable chunk IDs that map back to SQLite metadata.
-- [ ] Embeddings are produced through an adapter that can be faked in tests.
-- [ ] ChromaDB persistence lives under ignored local data paths.
-- [ ] Re-indexing changed documents removes stale vector entries.
-- [ ] Tests verify vector ID mapping without requiring live OpenAI calls.
+- [x] Vector records use stable chunk IDs that map back to SQLite metadata.
+- [x] Embeddings are produced through an adapter that can be faked in tests.
+- [x] ChromaDB persistence lives under ignored local data paths.
+- [x] Re-indexing changed documents removes stale vector entries.
+- [x] Tests verify vector ID mapping without requiring live OpenAI calls.
 
 ## Blocked by
 
