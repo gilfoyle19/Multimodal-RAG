@@ -8,11 +8,11 @@ Expose backend-served source previews for tables, figures, and page crops using 
 
 ## Acceptance criteria
 
-- [ ] `GET /sources/{source_id}` or equivalent route returns preview metadata or artifact references.
-- [ ] Table previews, figure previews, and page crop preview types are represented.
-- [ ] Preview responses are tied to stored source elements.
-- [ ] Tests cover successful preview lookup and missing source behavior.
-- [ ] Local artifact paths are not exposed as unsafe filesystem paths.
+- [x] `GET /sources/{source_id}` or equivalent route returns preview metadata or artifact references.
+- [x] Table previews, figure previews, and page crop preview types are represented.
+- [x] Preview responses are tied to stored source elements.
+- [x] Tests cover successful preview lookup and missing source behavior.
+- [x] Local artifact paths are not exposed as unsafe filesystem paths.
 
 ## Blocked by
 
