@@ -130,6 +130,10 @@ def _clear_stale_index_records(
         return
 
     connection.execute(
+        "DELETE FROM keyword_index_fts WHERE document_id = ?",
+        (candidate.document_id,),
+    )
+    connection.execute(
         "DELETE FROM pages WHERE document_id = ?",
         (candidate.document_id,),
     )

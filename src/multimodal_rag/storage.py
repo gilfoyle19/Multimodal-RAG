@@ -62,6 +62,16 @@ CREATE TABLE IF NOT EXISTS chunks (
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE VIRTUAL TABLE IF NOT EXISTS keyword_index_fts USING fts5(
+    chunk_id UNINDEXED,
+    source_element_id UNINDEXED,
+    parent_source_element_id UNINDEXED,
+    document_id UNINDEXED,
+    chunk_kind UNINDEXED,
+    searchable_text,
+    indexed_metadata
+);
+
 CREATE TABLE IF NOT EXISTS openai_cache_entries (
     cache_key TEXT PRIMARY KEY,
     input_hash TEXT NOT NULL,

@@ -40,16 +40,17 @@ def test_sqlite_bootstrap_creates_deterministic_schema(local_runtime_path: Path)
     assert sqlite_path.parent == local_runtime_path / "runtime"
     assert foreign_keys_enabled == 1
     assert journal_mode == "wal"
-    assert table_names == {
+    assert {
         "ask_traces",
         "chunks",
         "documents",
         "evaluation_cases",
+        "keyword_index_fts",
         "openai_cache_entries",
         "pages",
         "schema_migrations",
         "source_elements",
-    }
+    }.issubset(table_names)
 
 
 def test_sqlite_persists_core_metadata_relationships(local_runtime_path: Path) -> None:

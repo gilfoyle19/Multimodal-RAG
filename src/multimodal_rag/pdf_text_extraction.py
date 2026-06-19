@@ -13,6 +13,7 @@ from multimodal_rag.ingestion_status import (
     mark_document_ingestion_indexed,
     mark_document_ingestion_indexing,
 )
+from multimodal_rag.keyword_indexing import rebuild_keyword_index_for_document
 
 
 @dataclass(frozen=True)
@@ -174,6 +175,7 @@ def _extract_pdf_text_source_elements(
                 figure_caption_schema_version=figure_caption_schema_version,
             )
 
+    rebuild_keyword_index_for_document(connection, document_id, commit=False)
     connection.commit()
     return PdfTextExtractionSummary(
         document_id=document_id,

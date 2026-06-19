@@ -13,6 +13,7 @@ from multimodal_rag.ingestion_status import (
     mark_document_ingestion_indexed,
     mark_document_ingestion_indexing,
 )
+from multimodal_rag.keyword_indexing import rebuild_keyword_index_for_document, search_keyword_index
 from multimodal_rag.storage import connect_sqlite, initialize_sqlite_database
 
 
@@ -160,7 +161,44 @@ def test_discovery_marks_changed_pdf_for_clean_reindexing(local_runtime_path: Pa
             """,
             ("page_pump_0001", document_id, 1),
         )
+        connection.execute(
+            """
+            INSERT INTO source_elements (
+                source_element_id, document_id, page_id, source_type, page_number,
+                citation_key, section_path_json, label, content, metadata_json
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "source_pump_0001",
+                document_id,
+                "page_pump_0001",
+                "text",
+                1,
+                f"{document_id}:p1:text:0001",
+                json.dumps([], sort_keys=True),
+                "Pump Text",
+                "Old coolant guidance.",
+                json.dumps({}, sort_keys=True),
+            ),
+        )
+        connection.execute(
+            """
+            INSERT INTO chunks (
+                chunk_id, source_element_id, chunk_kind, searchable_text, metadata_json
+            )
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (
+                "chunk_pump_0001",
+                "source_pump_0001",
+                "source_element",
+                "Old coolant guidance.",
+                json.dumps({}, sort_keys=True),
+            ),
+        )
         connection.commit()
+        rebuild_keyword_index_for_document(connection, document_id)
 
         pdf_path.write_bytes(b"%PDF-1.7\n% second revision\n")
         rediscovered = discover_document_candidates(database_path, connection)
@@ -172,11 +210,13 @@ def test_discovery_marks_changed_pdf_for_clean_reindexing(local_runtime_path: Pa
             "SELECT COUNT(*) FROM pages WHERE document_id = ?",
             (document_id,),
         ).fetchone()[0]
+        stale_keyword_results = search_keyword_index(connection, "coolant")
 
     assert rediscovered[0].ingestion_status == "discovered"
     assert row["content_hash"] == rediscovered[0].content_hash
     assert row["ingestion_status"] == "discovered"
     assert page_count == 0
+    assert stale_keyword_results == []
 
 
 def test_ingestion_status_helpers_record_visible_states(local_runtime_path: Path) -> None:
