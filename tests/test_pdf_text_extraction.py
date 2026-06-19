@@ -1,6 +1,7 @@
 import json
 import shutil
 import uuid
+from base64 import b64decode
 from collections.abc import Generator
 from pathlib import Path
 from types import TracebackType
@@ -74,6 +75,21 @@ def _create_pdf_with_table(pdf_path: Path) -> None:
         document.close()
 
 
+def _create_pdf_with_figure(pdf_path: Path) -> None:
+    tiny_png = b64decode(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1s"
+        "AAAAASUVORK5CYII="
+    )
+    document = fitz.open()
+    try:
+        page = document.new_page(width=320, height=240)
+        page.insert_text((72, 48), "Figure 1: Pump seal orientation.")
+        page.insert_image(fitz.Rect(72, 72, 172, 132), stream=tiny_png)
+        document.save(pdf_path)
+    finally:
+        document.close()
+
+
 def test_extract_pdf_text_persists_pages_source_elements_and_chunks(
     local_runtime_path: Path,
 ) -> None:
@@ -134,6 +150,65 @@ def test_extract_pdf_text_persists_pages_source_elements_and_chunks(
     assert chunks[0]["source_element_id"] == sources[0]["source_element_id"]
     assert chunks[0]["chunk_kind"] == "source_element"
     assert chunks[0]["searchable_text"] == sources[0]["content"]
+
+
+def test_extract_pdf_text_persists_figure_source_elements_and_preview_artifacts(
+    local_runtime_path: Path,
+) -> None:
+    pdf_path = local_runtime_path / "database" / "figures.pdf"
+    pdf_path.parent.mkdir()
+    _create_pdf_with_figure(pdf_path)
+    sqlite_path = local_runtime_path / "data" / "app.sqlite3"
+    artifacts_path = local_runtime_path / "data" / "artifacts"
+    initialize_sqlite_database(sqlite_path)
+
+    with connect_sqlite(sqlite_path) as connection:
+        connection.execute(
+            """
+            INSERT INTO documents (
+                document_id, title, source_path, content_hash, ingestion_status
+            )
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            ("doc_figures", "Figure Manual", str(pdf_path), "sha256:figures", "discovered"),
+        )
+        connection.commit()
+
+        summary = extract_pdf_text_source_elements(
+            connection,
+            "doc_figures",
+            artifacts_path=artifacts_path,
+        )
+        figure_source = connection.execute(
+            """
+            SELECT source_element_id, document_id, page_id, source_type, page_number,
+                   citation_key, label, content, metadata_json
+            FROM source_elements
+            WHERE source_type = 'figure'
+            """
+        ).fetchone()
+        figure_caption_chunk_count = connection.execute(
+            "SELECT COUNT(*) FROM chunks WHERE chunk_kind = 'figure_caption'"
+        ).fetchone()[0]
+
+    metadata = json.loads(figure_source["metadata_json"])
+    artifact_path = artifacts_path / metadata["artifact_relative_path"]
+
+    assert summary.figure_source_elements_created == 1
+    assert figure_source["source_element_id"] == "doc_figures:source:figure:0001:0001"
+    assert figure_source["document_id"] == "doc_figures"
+    assert figure_source["page_id"] == "doc_figures:page:0001"
+    assert figure_source["page_number"] == 1
+    assert figure_source["citation_key"] == "doc_figures:p1:figure:0001"
+    assert figure_source["label"] == "Page 1 Figure 1"
+    assert figure_source["content"] == ""
+    assert metadata["artifact_kind"] == "original_figure"
+    assert metadata["artifact_relative_path"] == "doc_figures/figures/page-0001-figure-0001.png"
+    assert metadata["extraction_method"] == "pymupdf_image"
+    assert metadata["preview_type"] == "figure"
+    assert artifact_path.exists()
+    assert artifact_path.read_bytes().startswith(b"\x89PNG")
+    assert figure_caption_chunk_count == 0
 
 
 def test_extract_pdf_text_persists_whole_table_source_elements(

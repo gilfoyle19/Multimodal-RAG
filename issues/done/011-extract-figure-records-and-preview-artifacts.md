@@ -8,11 +8,11 @@ Extract figure records and local preview artifacts from PDFs so cited figures ca
 
 ## Acceptance criteria
 
-- [ ] Figure source elements or records include document, page, label, and artifact metadata.
-- [ ] Preview artifacts are written under ignored local data paths.
-- [ ] Figure extraction preserves the original figure as evidence.
-- [ ] Tests verify figure record persistence and preview path generation.
-- [ ] No generated caption is treated as the only source evidence.
+- [x] Figure source elements or records include document, page, label, and artifact metadata.
+- [x] Preview artifacts are written under ignored local data paths.
+- [x] Figure extraction preserves the original figure as evidence.
+- [x] Tests verify figure record persistence and preview path generation.
+- [x] No generated caption is treated as the only source evidence.
 
 ## Blocked by
 

@@ -20,18 +20,20 @@ class PdfTextExtractionSummary:
     pages_extracted: int
     text_source_elements_created: int
     table_source_elements_created: int
+    figure_source_elements_created: int
 
 
 def extract_pdf_text_source_elements(
     connection: sqlite3.Connection,
     document_id: str,
+    artifacts_path: Path = Path("data/artifacts"),
 ) -> PdfTextExtractionSummary:
     """Extract digital PDF page records and citeable text source elements."""
 
     mark_document_ingestion_indexing(connection, document_id)
     try:
         document_row = _load_document_row(connection, document_id)
-        summary = _extract_pdf_text_source_elements(connection, document_row)
+        summary = _extract_pdf_text_source_elements(connection, document_row, artifacts_path)
     except Exception:
         connection.rollback()
         mark_document_ingestion_failed(connection, document_id)
@@ -58,12 +60,14 @@ def _load_document_row(connection: sqlite3.Connection, document_id: str) -> sqli
 def _extract_pdf_text_source_elements(
     connection: sqlite3.Connection,
     document_row: sqlite3.Row,
+    artifacts_path: Path,
 ) -> PdfTextExtractionSummary:
     document_id = document_row["document_id"]
     source_path = Path(document_row["source_path"])
     pages_extracted = 0
     text_source_elements_created = 0
     table_source_elements_created = 0
+    figure_source_elements_created = 0
 
     with fitz.open(source_path) as pdf_document, pdfplumber.open(source_path) as pdfplumber_document:
         for page_index, page in enumerate(pdf_document, start=1):
@@ -143,6 +147,15 @@ def _extract_pdf_text_source_elements(
                 page_number=page_index,
                 tables=pdfplumber_document.pages[page_index - 1].extract_tables(),
             )
+            figure_source_elements_created += _extract_page_figure_source_elements(
+                connection=connection,
+                pdf_document=pdf_document,
+                page=page,
+                document_id=document_id,
+                page_id=page_id,
+                page_number=page_index,
+                artifacts_path=artifacts_path,
+            )
 
     connection.commit()
     return PdfTextExtractionSummary(
@@ -150,6 +163,7 @@ def _extract_pdf_text_source_elements(
         pages_extracted=pages_extracted,
         text_source_elements_created=text_source_elements_created,
         table_source_elements_created=table_source_elements_created,
+        figure_source_elements_created=figure_source_elements_created,
     )
 
 
@@ -278,6 +292,87 @@ def _insert_table_row_helper_chunks(
         )
 
 
+def _extract_page_figure_source_elements(
+    connection: sqlite3.Connection,
+    pdf_document: fitz.Document,
+    page: fitz.Page,
+    document_id: str,
+    page_id: str,
+    page_number: int,
+    artifacts_path: Path,
+) -> int:
+    figure_source_elements_created = 0
+    for image_index, image in enumerate(page.get_images(full=True), start=1):
+        image_xref = image[0]
+        extracted_image = pdf_document.extract_image(image_xref)
+        image_bytes = extracted_image["image"]
+        extension = _normalize_image_extension(str(extracted_image["ext"]))
+        relative_artifact_path = (
+            Path(document_id)
+            / "figures"
+            / f"page-{page_number:04d}-figure-{image_index:04d}.{extension}"
+        )
+        artifact_path = artifacts_path / relative_artifact_path
+        artifact_path.parent.mkdir(parents=True, exist_ok=True)
+        artifact_path.write_bytes(image_bytes)
+
+        source_element_id = _figure_source_element_id(document_id, page_number, image_index)
+        citation_key = _figure_citation_key(document_id, page_number, image_index)
+        metadata = {
+            "artifact_kind": "original_figure",
+            "artifact_relative_path": relative_artifact_path.as_posix(),
+            "bbox_json": json.dumps(_image_bbox(page, image_xref), sort_keys=True),
+            "extraction_method": "pymupdf_image",
+            "image_extension": extension,
+            "preview_type": "figure",
+        }
+        connection.execute(
+            """
+            INSERT INTO source_elements (
+                source_element_id, document_id, page_id, source_type, page_number,
+                citation_key, section_path_json, label, content, metadata_json
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(source_element_id) DO UPDATE SET
+                content = excluded.content,
+                metadata_json = excluded.metadata_json
+            """,
+            (
+                source_element_id,
+                document_id,
+                page_id,
+                "figure",
+                page_number,
+                citation_key,
+                json.dumps([], sort_keys=True),
+                f"Page {page_number} Figure {image_index}",
+                "",
+                json.dumps(metadata, sort_keys=True),
+            ),
+        )
+        figure_source_elements_created += 1
+    return figure_source_elements_created
+
+
+def _image_bbox(page: fitz.Page, image_xref: int) -> dict[str, str]:
+    rects = page.get_image_rects(image_xref)
+    if not rects:
+        return {}
+    rect = rects[0]
+    return {
+        "x0": str(float(rect.x0)),
+        "x1": str(float(rect.x1)),
+        "y0": str(float(rect.y0)),
+        "y1": str(float(rect.y1)),
+    }
+
+
+def _normalize_image_extension(extension: str) -> str:
+    if extension.lower() == "jpeg":
+        return "jpg"
+    return extension.lower()
+
+
 def _split_table_header_and_rows(
     table: list[list[str | None]],
 ) -> tuple[list[str], list[tuple[int, list[str]]]]:
@@ -357,3 +452,11 @@ def _table_row_helper_chunk_id(
 
 def _table_citation_key(document_id: str, page_number: int, table_index: int) -> str:
     return f"{document_id}:p{page_number}:table:{table_index:04d}"
+
+
+def _figure_source_element_id(document_id: str, page_number: int, figure_index: int) -> str:
+    return f"{document_id}:source:figure:{page_number:04d}:{figure_index:04d}"
+
+
+def _figure_citation_key(document_id: str, page_number: int, figure_index: int) -> str:
+    return f"{document_id}:p{page_number}:figure:{figure_index:04d}"
