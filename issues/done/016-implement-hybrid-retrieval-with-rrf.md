@@ -8,11 +8,11 @@ Implement hybrid retrieval that combines ChromaDB vector results and SQLite FTS 
 
 ## Acceptance criteria
 
-- [ ] Retrieval uses only documents with indexed status.
-- [ ] Vector and keyword result lists are fused with deterministic RRF behavior.
-- [ ] Evidence candidates include source identity and retrieval scores.
-- [ ] Tests cover vector-only, keyword-only, overlapping, and empty result paths.
-- [ ] Fault-table and specification-style candidates can map back to source elements.
+- [x] Retrieval uses only documents with indexed status.
+- [x] Vector and keyword result lists are fused with deterministic RRF behavior.
+- [x] Evidence candidates include source identity and retrieval scores.
+- [x] Tests cover vector-only, keyword-only, overlapping, and empty result paths.
+- [x] Fault-table and specification-style candidates can map back to source elements.
 
 ## Blocked by
 
