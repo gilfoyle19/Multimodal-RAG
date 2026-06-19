@@ -8,11 +8,11 @@ Extract tables from digital PDFs as whole source elements so fault tables, datas
 
 ## Acceptance criteria
 
-- [ ] Table source elements preserve whole-table content and citation metadata.
-- [ ] Table extraction is associated with document and page identity.
-- [ ] Table failures do not silently corrupt document ingestion state.
-- [ ] Tests cover at least one table fixture or representative parser fixture.
-- [ ] Whole tables remain the user-visible source, not row fragments.
+- [x] Table source elements preserve whole-table content and citation metadata.
+- [x] Table extraction is associated with document and page identity.
+- [x] Table failures do not silently corrupt document ingestion state.
+- [x] Tests cover at least one table fixture or representative parser fixture.
+- [x] Whole tables remain the user-visible source, not row fragments.
 
 ## Blocked by
 

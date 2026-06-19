@@ -8,11 +8,11 @@ Extract page records and text source elements from digital PDFs, preserving docu
 
 ## Acceptance criteria
 
-- [ ] Digital PDF pages are stored with stable page identity and page numbers.
-- [ ] Text source elements are created with citeable metadata.
-- [ ] Extraction does not require scanned PDF OCR.
-- [ ] Ingestion status reflects extraction success or failure.
-- [ ] Tests use small local fixtures and do not commit private manuals.
+- [x] Digital PDF pages are stored with stable page identity and page numbers.
+- [x] Text source elements are created with citeable metadata.
+- [x] Extraction does not require scanned PDF OCR.
+- [x] Ingestion status reflects extraction success or failure.
+- [x] Tests use small local fixtures and do not commit private manuals.
 
 ## Blocked by
 
