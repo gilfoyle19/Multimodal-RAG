@@ -11,6 +11,7 @@ import fitz  # type: ignore[import-untyped]
 import pdfplumber
 import pytest
 
+from multimodal_rag.figure_captioning import FigureCaptionInput
 from multimodal_rag.pdf_text_extraction import extract_pdf_text_source_elements
 from multimodal_rag.storage import connect_sqlite, initialize_sqlite_database
 
@@ -88,6 +89,16 @@ def _create_pdf_with_figure(pdf_path: Path) -> None:
         document.save(pdf_path)
     finally:
         document.close()
+
+
+class FakeFigureCaptionAdapter:
+    def __init__(self, caption: str) -> None:
+        self.caption = caption
+        self.calls: list[FigureCaptionInput] = []
+
+    def generate_caption(self, caption_input: FigureCaptionInput) -> dict[str, str]:
+        self.calls.append(caption_input)
+        return {"technical_caption": self.caption}
 
 
 def test_extract_pdf_text_persists_pages_source_elements_and_chunks(
@@ -209,6 +220,57 @@ def test_extract_pdf_text_persists_figure_source_elements_and_preview_artifacts(
     assert artifact_path.exists()
     assert artifact_path.read_bytes().startswith(b"\x89PNG")
     assert figure_caption_chunk_count == 0
+
+
+def test_extract_pdf_text_generates_searchable_figure_caption_when_adapter_is_supplied(
+    local_runtime_path: Path,
+) -> None:
+    pdf_path = local_runtime_path / "database" / "figures.pdf"
+    pdf_path.parent.mkdir()
+    _create_pdf_with_figure(pdf_path)
+    sqlite_path = local_runtime_path / "data" / "app.sqlite3"
+    artifacts_path = local_runtime_path / "data" / "artifacts"
+    initialize_sqlite_database(sqlite_path)
+    adapter = FakeFigureCaptionAdapter("Pump seal orientation diagram.")
+
+    with connect_sqlite(sqlite_path) as connection:
+        connection.execute(
+            """
+            INSERT INTO documents (
+                document_id, title, source_path, content_hash, ingestion_status
+            )
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            ("doc_figures", "Figure Manual", str(pdf_path), "sha256:figures", "discovered"),
+        )
+        connection.commit()
+
+        extract_pdf_text_source_elements(
+            connection,
+            "doc_figures",
+            artifacts_path=artifacts_path,
+            figure_caption_adapter=adapter,
+            figure_caption_model="gpt-test-caption",
+            figure_caption_schema_version="caption-schema-v1",
+        )
+        caption_chunk = connection.execute(
+            """
+            SELECT chunk_id, source_element_id, chunk_kind, searchable_text,
+                   parent_source_element_id, metadata_json
+            FROM chunks
+            WHERE chunk_kind = 'figure_caption'
+            """
+        ).fetchone()
+        cache_count = connection.execute("SELECT COUNT(*) FROM openai_cache_entries").fetchone()[0]
+
+    assert len(adapter.calls) == 1
+    assert caption_chunk["chunk_id"] == "doc_figures:chunk:figure-caption:0001:0001"
+    assert caption_chunk["source_element_id"] == "doc_figures:source:figure:0001:0001"
+    assert caption_chunk["chunk_kind"] == "figure_caption"
+    assert caption_chunk["searchable_text"] == "Pump seal orientation diagram."
+    assert caption_chunk["parent_source_element_id"] == "doc_figures:source:figure:0001:0001"
+    assert json.loads(caption_chunk["metadata_json"])["is_primary_citation"] == "false"
+    assert cache_count == 1
 
 
 def test_extract_pdf_text_persists_whole_table_source_elements(

@@ -7,6 +7,7 @@ from typing import cast
 import fitz  # type: ignore[import-untyped]
 import pdfplumber
 
+from multimodal_rag.figure_captioning import FigureCaptionAdapter, generate_figure_caption
 from multimodal_rag.ingestion_status import (
     mark_document_ingestion_failed,
     mark_document_ingestion_indexed,
@@ -27,13 +28,23 @@ def extract_pdf_text_source_elements(
     connection: sqlite3.Connection,
     document_id: str,
     artifacts_path: Path = Path("data/artifacts"),
+    figure_caption_adapter: FigureCaptionAdapter | None = None,
+    figure_caption_model: str = "gpt-4.1-mini",
+    figure_caption_schema_version: str = "v1",
 ) -> PdfTextExtractionSummary:
     """Extract digital PDF page records and citeable text source elements."""
 
     mark_document_ingestion_indexing(connection, document_id)
     try:
         document_row = _load_document_row(connection, document_id)
-        summary = _extract_pdf_text_source_elements(connection, document_row, artifacts_path)
+        summary = _extract_pdf_text_source_elements(
+            connection,
+            document_row,
+            artifacts_path,
+            figure_caption_adapter,
+            figure_caption_model,
+            figure_caption_schema_version,
+        )
     except Exception:
         connection.rollback()
         mark_document_ingestion_failed(connection, document_id)
@@ -61,6 +72,9 @@ def _extract_pdf_text_source_elements(
     connection: sqlite3.Connection,
     document_row: sqlite3.Row,
     artifacts_path: Path,
+    figure_caption_adapter: FigureCaptionAdapter | None,
+    figure_caption_model: str,
+    figure_caption_schema_version: str,
 ) -> PdfTextExtractionSummary:
     document_id = document_row["document_id"]
     source_path = Path(document_row["source_path"])
@@ -155,6 +169,9 @@ def _extract_pdf_text_source_elements(
                 page_id=page_id,
                 page_number=page_index,
                 artifacts_path=artifacts_path,
+                figure_caption_adapter=figure_caption_adapter,
+                figure_caption_model=figure_caption_model,
+                figure_caption_schema_version=figure_caption_schema_version,
             )
 
     connection.commit()
@@ -300,6 +317,9 @@ def _extract_page_figure_source_elements(
     page_id: str,
     page_number: int,
     artifacts_path: Path,
+    figure_caption_adapter: FigureCaptionAdapter | None,
+    figure_caption_model: str,
+    figure_caption_schema_version: str,
 ) -> int:
     figure_source_elements_created = 0
     for image_index, image in enumerate(page.get_images(full=True), start=1):
@@ -350,6 +370,16 @@ def _extract_page_figure_source_elements(
                 json.dumps(metadata, sort_keys=True),
             ),
         )
+        if figure_caption_adapter is not None:
+            generate_figure_caption(
+                connection,
+                source_element_id,
+                artifacts_path,
+                figure_caption_adapter,
+                model=figure_caption_model,
+                schema_version=figure_caption_schema_version,
+                commit=False,
+            )
         figure_source_elements_created += 1
     return figure_source_elements_created
 

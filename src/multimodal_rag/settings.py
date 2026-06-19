@@ -1,7 +1,9 @@
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field, SecretStr, model_validator
+from typing import Any
+
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -42,6 +44,13 @@ class AppSettings(BaseSettings):
 
     allow_partial_answers: bool = True
     strict_not_found_message: str = STRICT_NOT_FOUND_MESSAGE
+
+    @field_validator("openai_api_key", mode="before")
+    @classmethod
+    def normalize_blank_openai_api_key(cls, value: Any) -> Any:
+        if value == "":
+            return None
+        return value
 
     @model_validator(mode="after")
     def validate_candidate_limits(self) -> "AppSettings":

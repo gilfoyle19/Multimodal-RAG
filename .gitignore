@@ -2,6 +2,9 @@
 .env
 .env.*
 !.env.example
+.envrc
+documents/
+
 
 # Runtime data and document artifacts
 database/

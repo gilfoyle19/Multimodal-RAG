@@ -8,11 +8,11 @@ Add OpenAI-backed technical caption generation for figure evidence bundles, cach
 
 ## Acceptance criteria
 
-- [ ] Caption generation uses an adapter that can be faked in tests.
-- [ ] Cache lookup happens before any hosted model call.
-- [ ] Cache records include input hash, model, prompt version, and schema version.
-- [ ] Generated captions are stored as searchable metadata, not as sole evidence.
-- [ ] Tests cover cache hit, cache miss, and invalid adapter response behavior.
+- [x] Caption generation uses an adapter that can be faked in tests.
+- [x] Cache lookup happens before any hosted model call.
+- [x] Cache records include input hash, model, prompt version, and schema version.
+- [x] Generated captions are stored as searchable metadata, not as sole evidence.
+- [x] Tests cover cache hit, cache miss, and invalid adapter response behavior.
 
 ## Blocked by
 
