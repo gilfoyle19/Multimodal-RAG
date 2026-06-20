@@ -228,6 +228,25 @@ class VerifiedEvidence(ContractModel):
         return self
 
 
+class EvidenceVerificationResult(ContractModel):
+    verified_evidence: list[VerifiedEvidence] = Field(default_factory=list)
+    unsupported_subquestion_ids: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def require_unique_references(self) -> "EvidenceVerificationResult":
+        evidence_ids = [item.evidence_id for item in self.verified_evidence]
+        candidate_ids = [item.candidate_id for item in self.verified_evidence]
+        if len(set(evidence_ids)) != len(evidence_ids):
+            raise ValueError("evidence ids must be unique")
+        if len(set(candidate_ids)) != len(candidate_ids):
+            raise ValueError("accepted candidate ids must be unique")
+        if len(set(self.unsupported_subquestion_ids)) != len(
+            self.unsupported_subquestion_ids
+        ):
+            raise ValueError("unsupported subquestion ids must be unique")
+        return self
+
+
 class AnswerClaim(ContractModel):
     claim: str = Field(min_length=1)
     claim_type: ClaimType
