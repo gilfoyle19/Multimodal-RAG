@@ -8,6 +8,8 @@ from typing import Any, Protocol, cast
 
 from pydantic import BaseModel, Field, ValidationError
 
+from multimodal_rag.openai_cache import OpenAICache, OpenAICacheKey, hash_openai_input
+
 
 FIGURE_CAPTION_PROMPT_VERSION = "figure-caption-v1"
 
@@ -92,27 +94,21 @@ def generate_figure_caption(
     source_row = _load_figure_source(connection, source_element_id)
     caption_input = _build_caption_input(source_row, artifacts_path)
     input_hash = _caption_input_hash(caption_input)
-
-    cached_response = _load_cached_caption_response(
-        connection=connection,
+    cache = OpenAICache(connection)
+    cache_key = OpenAICacheKey(
         input_hash=input_hash,
         model=model,
         prompt_version=prompt_version,
         schema_version=schema_version,
     )
+
+    cached_response = cache.lookup(cache_key)
     if cached_response is not None:
-        caption_response = cached_response
+        caption_response = _validate_caption_response(cached_response)
         cache_hit = True
     else:
         caption_response = _validate_caption_response(adapter.generate_caption(caption_input))
-        _store_caption_cache_entry(
-            connection=connection,
-            input_hash=input_hash,
-            model=model,
-            prompt_version=prompt_version,
-            schema_version=schema_version,
-            caption_response=caption_response,
-        )
+        cache.write(cache_key, caption_response.model_dump(mode="json"))
         cache_hit = False
 
     _store_caption_chunk(
@@ -178,62 +174,7 @@ def _caption_input_hash(caption_input: FigureCaptionInput) -> str:
         "page_number": caption_input.page_number,
         "source_element_id": caption_input.source_element_id,
     }
-    payload = json.dumps(hash_input, sort_keys=True, separators=(",", ":")).encode("utf-8")
-    return f"sha256:{hashlib.sha256(payload).hexdigest()}"
-
-
-def _load_cached_caption_response(
-    connection: sqlite3.Connection,
-    *,
-    input_hash: str,
-    model: str,
-    prompt_version: str,
-    schema_version: str,
-) -> FigureCaptionResponse | None:
-    cache_row = connection.execute(
-        """
-        SELECT response_json
-        FROM openai_cache_entries
-        WHERE input_hash = ?
-          AND model = ?
-          AND prompt_version = ?
-          AND schema_version = ?
-        """,
-        (input_hash, model, prompt_version, schema_version),
-    ).fetchone()
-    if cache_row is None:
-        return None
-    return _validate_caption_response(json.loads(cast(str, cache_row["response_json"])))
-
-
-def _store_caption_cache_entry(
-    connection: sqlite3.Connection,
-    *,
-    input_hash: str,
-    model: str,
-    prompt_version: str,
-    schema_version: str,
-    caption_response: FigureCaptionResponse,
-) -> None:
-    cache_key = f"figure_caption:{input_hash}:{model}:{prompt_version}:{schema_version}"
-    connection.execute(
-        """
-        INSERT INTO openai_cache_entries (
-            cache_key, input_hash, model, prompt_version, schema_version, response_json
-        )
-        VALUES (?, ?, ?, ?, ?, ?)
-        ON CONFLICT(input_hash, model, prompt_version, schema_version) DO UPDATE SET
-            response_json = excluded.response_json
-        """,
-        (
-            cache_key,
-            input_hash,
-            model,
-            prompt_version,
-            schema_version,
-            caption_response.model_dump_json(),
-        ),
-    )
+    return hash_openai_input(hash_input)
 
 
 def _store_caption_chunk(

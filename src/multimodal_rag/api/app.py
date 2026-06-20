@@ -1,17 +1,27 @@
+from typing import cast
+
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 
+from multimodal_rag.contracts import RetrievalRequest, RetrievalResponse
+from multimodal_rag.retrieval_inspection import RetrievalInspectionService
 from multimodal_rag.settings import get_settings
 from multimodal_rag.source_previews import load_source_artifact_path, load_source_preview
 from multimodal_rag.storage import connect_sqlite
 
 app = FastAPI(title="Multimodal Manual Troubleshooting API")
 app.state.settings = get_settings()
+app.state.retrieval_service = RetrievalInspectionService(app.state.settings)
 
 
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.post("/retrieve", response_model=RetrievalResponse)
+def retrieve(request: RetrievalRequest) -> RetrievalResponse:
+    return cast(RetrievalResponse, app.state.retrieval_service.retrieve(request.query))
 
 
 @app.get("/sources/{source_id}")

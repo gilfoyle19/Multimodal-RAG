@@ -1,6 +1,6 @@
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl, model_validator
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator, model_validator
 
 
 class ContractModel(BaseModel):
@@ -140,6 +140,40 @@ class EvidenceCandidate(ContractModel):
         if self.citation.source_element_id != self.source_element_id:
             raise ValueError("citation source_element_id must match candidate source_element_id")
         return self
+
+
+class RetrievalRequest(ContractModel):
+    query: str = Field(min_length=1)
+
+    @field_validator("query")
+    @classmethod
+    def reject_blank_query(cls, value: str) -> str:
+        query = value.strip()
+        if not query:
+            raise ValueError("query must contain non-whitespace characters")
+        return query
+
+
+class RetrievalCandidate(ContractModel):
+    rank: int = Field(ge=1)
+    candidate_id: str = Field(min_length=1)
+    chunk_id: str = Field(min_length=1)
+    source_element_id: str = Field(min_length=1)
+    chunk_kind: ChunkKind
+    parent_source_element_id: str | None = Field(default=None, min_length=1)
+    citation: CitationIdentity
+    document_title: str = Field(min_length=1)
+    section_path: list[str] = Field(default_factory=list)
+    source_type: SourceElementType
+    label: str | None = None
+    excerpt: str = Field(min_length=1)
+    retrieval_scores: RetrievalScores
+    relevance_reason: str = Field(min_length=1)
+
+
+class RetrievalResponse(ContractModel):
+    query: str = Field(min_length=1)
+    candidates: list[RetrievalCandidate] = Field(default_factory=list)
 
 
 class VerifiedEvidence(ContractModel):
