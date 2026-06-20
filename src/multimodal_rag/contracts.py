@@ -176,6 +176,42 @@ class RetrievalResponse(ContractModel):
     candidates: list[RetrievalCandidate] = Field(default_factory=list)
 
 
+class SubQuestion(ContractModel):
+    subquestion_id: str = Field(min_length=1)
+    question: str = Field(min_length=1)
+
+    @field_validator("subquestion_id", "question")
+    @classmethod
+    def reject_blank_values(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("value must contain non-whitespace characters")
+        return normalized
+
+
+class QueryDecomposition(ContractModel):
+    sub_questions: list[SubQuestion] = Field(min_length=1)
+    entities: list[str] = Field(default_factory=list)
+    fallback_used: bool = False
+
+    @field_validator("entities")
+    @classmethod
+    def normalize_entities(cls, values: list[str]) -> list[str]:
+        normalized = [value.strip() for value in values]
+        if any(not value for value in normalized):
+            raise ValueError("entities must contain non-whitespace characters")
+        if len(set(normalized)) != len(normalized):
+            raise ValueError("entities must be unique")
+        return normalized
+
+    @model_validator(mode="after")
+    def require_unique_subquestion_ids(self) -> "QueryDecomposition":
+        ids = [part.subquestion_id for part in self.sub_questions]
+        if len(set(ids)) != len(ids):
+            raise ValueError("subquestion ids must be unique")
+        return self
+
+
 class VerifiedEvidence(ContractModel):
     evidence_id: str = Field(min_length=1)
     candidate_id: str = Field(min_length=1)

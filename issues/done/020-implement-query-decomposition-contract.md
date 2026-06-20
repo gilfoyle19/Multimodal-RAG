@@ -8,11 +8,11 @@ Implement the query decomposition contract that turns a user question into deter
 
 ## Acceptance criteria
 
-- [ ] Query decomposition output is validated by a Pydantic contract.
-- [ ] Invalid model output gets one deterministic retry with validation feedback.
-- [ ] Retry failure returns a deterministic fallback or internal error according to the contract.
-- [ ] Tests use fake model responses for valid, invalid-then-valid, and invalid-twice paths.
-- [ ] Multi-part questions preserve unsupported parts for later partial handling.
+- [x] Query decomposition output is validated by a Pydantic contract.
+- [x] Invalid model output gets one deterministic retry with validation feedback.
+- [x] Retry failure returns a deterministic fallback or internal error according to the contract.
+- [x] Tests use fake model responses for valid, invalid-then-valid, and invalid-twice paths.
+- [x] Multi-part questions preserve unsupported parts for later partial handling.
 
 ## Blocked by
 
